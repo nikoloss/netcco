@@ -161,7 +161,6 @@ static void unset_proc_ops(void){
 }
 
 static int __init netcco_init(void){
-    
     install_hooks();
     set_proc_ops();
     return 0;
