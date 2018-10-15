@@ -1,25 +1,17 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
-#include <linux/init.h>
-#include <linux/skbuff.h>
-#include <linux/inet.h>
-#include <linux/netdevice.h>
-#include <net/tcp.h>
 #include <net/ip.h>
-#include <net/checksum.h>
-#include <linux/uaccess.h>
 #include <linux/proc_fs.h>
 #include "nc_def.h"
-
 
 #define NC_UNMATCHED   (0)
 #define NC_MATCHED     (1)
 #define MAX_DISTORTS   (100)
+
 static int                   distorts_len;
 static struct nc_distort     distorts[MAX_DISTORTS];
-static struct nc_distort     *distort_buf;
+static struct nc_distort     distort_buf;
 static struct nf_hook_ops    i_hook;
 static struct nf_hook_ops    o_hook;
 static struct iphdr          *ip_header;
@@ -82,8 +74,8 @@ static unsigned int _hook_incoming(void* priv,
 {
     skb_linearize(skb);
     ip_header  = ip_hdr(skb);
-	tcp_header = tcp_hdr(skb);
-	// struct udphdr *udp_header 		=	udp_hdr(skb);
+    tcp_header = tcp_hdr(skb);
+
     if (ip_header->protocol==IPPROTO_TCP) {
         for (i = 0;i<distorts_len;i++) {
             if (block_old_source(distorts[i])) {
@@ -105,7 +97,6 @@ static unsigned int _hook_outgoing(void* priv,
     skb_linearize(skb);
     ip_header  = ip_hdr(skb);
 	tcp_header = tcp_hdr(skb);
-    
     
     if (ip_header->protocol==IPPROTO_TCP) {
         for (i=0;i<distorts_len;i++) {
@@ -142,20 +133,14 @@ static ssize_t proc_op_write(struct file *filp,
                              size_t len,
                              loff_t* offset)
 {
-    distort_buf = (struct nc_distort*)vmalloc(sizeof(struct nc_distort));
-    if (!distort_buf) {
-        return -ENOMEM;
-    }
-    if(copy_from_user(distort_buf, buffer, len)){
-        vfree(distort_buf);
+    if(copy_from_user(&distort_buf, buffer, len)){
         return -EFAULT;
     }
-    distorts[distorts_len].old_addr = distort_buf->old_addr;
-    distorts[distorts_len].old_port = distort_buf->old_port;
-    distorts[distorts_len].new_addr = distort_buf->new_addr;
-    distorts[distorts_len].new_port = distort_buf->new_port;
+    distorts[distorts_len].old_addr = distort_buf.old_addr;
+    distorts[distorts_len].old_port = distort_buf.old_port;
+    distorts[distorts_len].new_addr = distort_buf.new_addr;
+    distorts[distorts_len].new_port = distort_buf.new_port;
     distorts_len++;
-    vfree(distort_buf);
     return len;
 }
 
@@ -175,22 +160,22 @@ static void unset_proc_ops(void){
     }
 }
 
-static int __init ncco_init(void){
+static int __init netcco_init(void){
     
     install_hooks();
     set_proc_ops();
     return 0;
 }
 
-static void __exit ncco_exit(void){
+static void __exit netcco_exit(void){
     uninstall_hooks();
     unset_proc_ops();
 }
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("netcco Loadable Kernel Module");
-MODULE_AUTHOR("Zhideng");
+MODULE_DESCRIPTION("a kernel module which can distort tcp destination");
+MODULE_AUTHOR("Rowland");
 
-module_init(ncco_init);
-module_exit(ncco_exit);
+module_init(netcco_init);
+module_exit(netcco_exit);
 

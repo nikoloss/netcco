@@ -19,11 +19,15 @@ int main(int argc, char** argv){
         printf("%s [old_ip] [old_port] [new_ip] [new_port]\n", argv[0]);
         return EXIT_FAILURE;
     }
-    
-    d.old_addr = inet_addr(argv[1]);
+    //inet_addr把xxx.xxx.xxx.xx的字符串直接变成整形（网络字节序）
+    d.old_addr = inet_addr(argv[1]); 
     d.old_port = htons(atoi(argv[2]));
     d.new_addr = inet_addr(argv[3]);
     d.new_port = htons(atoi(argv[4]));
+    printf("old ip:%d\n", d.old_addr);
+    printf("old port:%d\n", d.old_port);
+    printf("new ip:%d\n", d.new_addr);
+    printf("new port:%d\n", d.new_port);
     write(fd, &d, sizeof(struct nc_distort));
     close(fd);
     return EXIT_SUCCESS;
